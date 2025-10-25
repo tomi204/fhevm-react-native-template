@@ -43,17 +43,17 @@ const withRemoteMode = async (options: CreateFheClientOptions & { mode?: "remote
 
 const withLocalMode = async (options: CreateFheClientOptions & { mode: "local" }): Promise<FheClient> => {
   const signer = options.signer;
-  const contract = new ethers.Contract(options.contract.address, options.contract.abi, signer);
-  const controller = new AbortController();
+  const contractAbi = options.contract.abi as unknown as ethers.InterfaceAbi;
+  const contract = new ethers.Contract(options.contract.address, contractAbi, signer);
+  const abortController = new AbortController();
   const instancePromise = createFhevmInstance({
     provider: options.provider,
-    chainId: options.chainId,
     mockChains: options.mockChains,
-    signal: controller.signal,
+    signal: abortController.signal,
   });
   const getInstance = async () => instancePromise;
 
-  const controller: LocalController = {
+  const localController: LocalController = {
     getInstance,
     signer,
     contract,
@@ -61,11 +61,11 @@ const withLocalMode = async (options: CreateFheClientOptions & { mode: "local" }
 
   const decryptHandle = async (handle: string) => {
     if (handle === ethers.ZeroHash) return "0";
-    const instance = await controller.getInstance();
+    const instance = await localController.getInstance();
     const sig = await FhevmDecryptionSignature.loadOrSign(
       instance,
       [options.contract.address],
-      controller.signer,
+      localController.signer,
       decryptStorage,
     );
     if (!sig) throw new Error("Unable to create FHE signature");
@@ -89,8 +89,8 @@ const withLocalMode = async (options: CreateFheClientOptions & { mode: "local" }
       inputs?: { internalType?: string }[];
     } | null;
     if (!fnAbi || !fnAbi.inputs) throw new Error(`Function ${functionName} not found in ABI`);
-    const instance = await controller.getInstance();
-    const input = instance.createEncryptedInput(options.contract.address, await controller.signer.getAddress());
+    const instance = await localController.getInstance();
+    const input = instance.createEncryptedInput(options.contract.address, await localController.signer.getAddress());
     fnAbi.inputs.forEach((inputParam, index) => {
       const method = getEncryptionMethod(inputParam.internalType ?? "externalEuint32");
       (input as any)[method](values[index] ?? 0);
@@ -103,17 +103,20 @@ const withLocalMode = async (options: CreateFheClientOptions & { mode: "local" }
     mode: "local",
     contract: options.contract,
     read: async (functionName = "getCount") => {
-      const handle: string = await controller.contract[functionName]();
+      const handle: string = await localController.contract[functionName]();
       const value = await decryptHandle(handle);
       return { handle, value };
     },
     mutate: async ({ functionName, values }) => {
       const args = await encryptArgs(functionName, values);
-      const tx = await controller.contract[functionName](...args);
+      const tx = await localController.contract[functionName](...args);
       const receipt = await tx.wait();
       return { txHash: tx.hash, blockNumber: receipt.blockNumber };
     },
     metadata: {},
+    [Symbol.asyncDispose]: async () => {
+      abortController.abort();
+    },
   };
 };
 

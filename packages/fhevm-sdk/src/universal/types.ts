@@ -1,11 +1,11 @@
-import type { AbiFragment } from "abitype";
+import type { Abi } from "abitype";
 import type { RemoteFheClient } from "../remote/index.js";
 import type { FhevmInstance } from "../fhevmTypes.js";
 import type { Eip1193Provider, ethers } from "ethers";
 
 export type FheContractConfig = {
   address: `0x${string}`;
-  abi: AbiFragment[];
+  abi: Abi;
   name?: string;
 };
 
