@@ -73,6 +73,66 @@ pnpm deploy:sepolia
 pnpm start
 ```
 
+## 📱 React Native Wallet Template
+
+`packages/react-native` now consumes a small HTTP “relayer” instead of running TFHE locally (mobile runtimes still lack `SharedArrayBuffer`). The UI mirrors the web demo, but all encryption/decryption happens in Node.
+
+### Quick start
+
+```bash
+pnpm install
+
+# optional: spin up the local Hardhat node + deploy contracts
+pnpm chain &
+pnpm deploy:localhost
+
+# start the FHE relayer service (see below)
+cp packages/relayer-service/.env.example packages/relayer-service/.env
+pnpm relayer:dev
+
+# launch the Expo dev server (Android only today)
+pnpm mobile
+```
+
+1. Use an Android emulator/device (Expo Go iOS cannot run TFHE today).
+2. In the app, set **Relayer URL** to `http://10.0.2.2:4000` (Android loopback to your Mac) or to your remote server.
+3. Tap **Increment** / **Decrement**; the relayer encrypts/decrypts and returns the up-to-date counter.
+
+### Highlights
+
+- Thin HTTP SDK that works on any mobile runtime (no `SharedArrayBuffer` required on-device).
+- Same UX as the web demo, just backed by the relayer.
+- Metro config ready for pnpm monorepos; no ejecting required.
+
+> ℹ️ iOS still blocks `SharedArrayBuffer`, so TFHE in Expo Go/dev clients is not possible yet. Use Android with the relayer for now.
+
+## 🔌 FHE Relayer Service (Node)
+
+`packages/relayer-service` is an Express server that loads `@fhevm-sdk`, performs encrypt/decrypt on behalf of clients, and exposes a tiny REST API:
+
+- `GET /status` – reports chain, signer, and contract info.
+- `GET /counter` – returns the latest encrypted handle + decrypted value.
+- `POST /counter { delta }` – encrypts the delta, sends the transaction, and returns the updated counter.
+
+### Quick start
+
+```bash
+cd packages/relayer-service
+cp .env.example .env
+# edit RPC_URL / PRIVATE_KEY / CHAIN_ID as needed
+pnpm dev          # hot reload
+# or pnpm build && pnpm start
+```
+
+Environment variables:
+
+- `RPC_URL`: Hardhat or Sepolia RPC endpoint.
+- `PRIVATE_KEY`: signer that is allowed to decrypt and send counter transactions.
+- `CHAIN_ID`: chain where `FHECounter` is deployed (defaults to 31337).
+- `PORT`: HTTP port (defaults to 4000).
+
+Point the React Native app to `http://10.0.2.2:4000` (Android emulator loopback) or expose the service publicly for real devices.
+
 ### 4. Connect MetaMask
 
 1. Open [http://localhost:3000](http://localhost:3000) in your browser
@@ -128,7 +188,9 @@ fhevm-react-template/
 ├── packages/
 │   ├── fhevm-hardhat-template/    # Smart contracts & deployment
 │   ├── fhevm-sdk/                 # FHEVM SDK package
-│   └── nextjs/                      # React frontend application
+│   ├── nextjs/                    # React frontend application
+│   ├── react-native/              # Expo wallet template (talks to relayer)
+│   └── relayer-service/           # Node bridge that performs TFHE ops
 └── scripts/                       # Build and deployment scripts
 ```
 

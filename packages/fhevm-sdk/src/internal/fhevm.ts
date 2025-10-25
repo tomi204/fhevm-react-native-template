@@ -8,6 +8,7 @@ import type {
 import { isFhevmWindowType, RelayerSDKLoader } from "./RelayerSDKLoader";
 import { publicKeyStorageGet, publicKeyStorageSet } from "./PublicKeyStorage";
 import { FhevmInstance, FhevmInstanceConfig } from "../fhevmTypes";
+import { getGlobalScope } from "./runtime";
 
 export class FhevmReactError extends Error {
   code: string;
@@ -26,11 +27,19 @@ function throwFhevmError(
   throw new FhevmReactError(code, message, cause ? { cause } : undefined);
 }
 
-const isFhevmInitialized = (): boolean => {
-  if (!isFhevmWindowType(window, console.log)) {
-    return false;
+const getRelayerScope = (): FhevmWindowType | undefined => {
+  const scope = getGlobalScope();
+  if (!scope) return undefined;
+  if (!isFhevmWindowType(scope, console.log)) {
+    return undefined;
   }
-  return window.relayerSDK.__initialized__ === true;
+  return scope;
+};
+
+const isFhevmInitialized = (): boolean => {
+  const scope = getRelayerScope();
+  if (!scope) return false;
+  return scope.relayerSDK.__initialized__ === true;
 };
 
 const fhevmLoadSDK: FhevmLoadSDKType = () => {
@@ -41,11 +50,12 @@ const fhevmLoadSDK: FhevmLoadSDKType = () => {
 const fhevmInitSDK: FhevmInitSDKType = async (
   options?: FhevmInitSDKOptions
 ) => {
-  if (!isFhevmWindowType(window, console.log)) {
+  const scope = getRelayerScope();
+  if (!scope) {
     throw new Error("window.relayerSDK is not available");
   }
-  const result = await window.relayerSDK.initSDK(options);
-  window.relayerSDK.__initialized__ = result;
+  const result = await scope.relayerSDK.initSDK(options);
+  scope.relayerSDK.__initialized__ = result;
   if (!result) {
     throw new Error("window.relayerSDK.initSDK failed.");
   }
@@ -260,7 +270,8 @@ export const createFhevmInstance = async (parameters: {
 
   throwIfAborted();
 
-  if (!isFhevmWindowType(window, console.log)) {
+  const relayerScope = getRelayerScope();
+  if (!relayerScope) {
     notify("sdk-loading");
 
     // throws an error if failed
@@ -282,7 +293,12 @@ export const createFhevmInstance = async (parameters: {
     notify("sdk-initialized");
   }
 
-  const relayerSDK = (window as unknown as FhevmWindowType).relayerSDK;
+  const scope = getRelayerScope();
+  if (!scope) {
+    throw new Error("Relayer SDK is not available after initialization.");
+  }
+
+  const relayerSDK = scope.relayerSDK;
 
   const aclAddress = relayerSDK.SepoliaConfig.aclContractAddress;
   if (!checkIsAddress(aclAddress)) {

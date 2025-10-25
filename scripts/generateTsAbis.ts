@@ -19,7 +19,7 @@ const generatedContractComment = `
 
 const DEPLOYMENTS_DIR = "./packages/hardhat/deployments";
 const ARTIFACTS_DIR = "./packages/hardhat/artifacts";
-const TARGET_DIR = "./packages/nextjs/contracts/";
+const TARGET_DIRS = ["./packages/nextjs/contracts/", "./packages/react-native/contracts/"] as const;
 
 function getDirectories(path: string) {
   return fs
@@ -116,21 +116,29 @@ const generateTsAbis = async function () {
     return `${content}${parseInt(chainId).toFixed(0)}:${JSON.stringify(chainConfig, null, 2)},`;
   }, "");
 
-  if (!fs.existsSync(TARGET_DIR)) {
-    fs.mkdirSync(TARGET_DIR);
-  }
-  fs.writeFileSync(
-    `${TARGET_DIR}deployedContracts.ts`,
-    await prettier.format(
-      `${generatedContractComment} import { GenericContractsDeclaration } from "~~/utils/helper/contract"; \n\n
- const deployedContracts = {${fileContent}} as const; \n\n export default deployedContracts satisfies GenericContractsDeclaration`,
-      {
-        parser: "typescript",
-      },
-    ),
-  );
+  for (const dir of TARGET_DIRS) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const importLine =
+      dir.includes("nextjs") ?
+        'import { GenericContractsDeclaration } from "~~/utils/helper/contract";' :
+        "type GenericContractsDeclaration = Record<number, Record<string, { address: `0x${string}`; abi: any[]; deployedOnBlock?: number }>>;";
+    const body =
+      dir.includes("nextjs") ?
+        `export default deployedContracts satisfies GenericContractsDeclaration;` :
+        "export default deployedContracts satisfies GenericContractsDeclaration;";
+    const content = `${generatedContractComment} ${importLine}\n\nconst deployedContracts = {${fileContent}} as const;\n\n${body}`;
 
-  console.log(`📝 Updated TypeScript contract definition file on ${TARGET_DIR}deployedContracts.ts`);
+    fs.writeFileSync(
+      `${dir}deployedContracts.ts`,
+      await prettier.format(content, {
+        parser: "typescript",
+      }),
+    );
+
+    console.log(`📝 Updated contracts map at ${dir}deployedContracts.ts`);
+  }
 };
 
 export default generateTsAbis;

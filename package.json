@@ -51,6 +51,13 @@
     "vercel": "pnpm --filter ./packages/nextjs vercel",
     "vercel:login": "pnpm --filter ./packages/nextjs vercel:login",
     "vercel:yolo": "pnpm --filter ./packages/nextjs vercel:yolo",
+    "mobile": "pnpm --filter ./packages/react-native start",
+    "mobile:android": "pnpm --filter ./packages/react-native android",
+    "mobile:ios": "pnpm --filter ./packages/react-native ios",
+    "mobile:web": "pnpm --filter ./packages/react-native web",
+    "relayer:dev": "pnpm --filter ./packages/relayer-service dev",
+    "relayer:build": "pnpm --filter ./packages/relayer-service build",
+    "relayer:start": "pnpm --filter ./packages/relayer-service start",
     "verify": "pnpm hardhat:verify",
     "verify:sepolia": "pnpm hardhat:verify:sepolia"
   },

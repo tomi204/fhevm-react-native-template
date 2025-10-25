@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "FHE Wallet",
+    "slug": "fhe-wallet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.fhe-wallet"
+    },
+    "android": {
+      "package": "com.anonymous.fhewallet"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
+    }
+  }
+}

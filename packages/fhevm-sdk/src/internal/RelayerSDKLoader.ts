@@ -1,5 +1,7 @@
 import { FhevmRelayerSDKType, FhevmWindowType } from "./fhevmTypes";
 import { SDK_CDN_URL } from "./constants";
+import { getGlobalScope, hasDomAPIs } from "./runtime";
+import type { GlobalScope } from "./runtime";
 
 type TraceType = (message?: unknown, ...optionalParams: unknown[]) => void;
 
@@ -11,25 +13,28 @@ export class RelayerSDKLoader {
   }
 
   public isLoaded() {
-    if (typeof window === "undefined") {
-      throw new Error("RelayerSDKLoader: can only be used in the browser.");
-    }
-    return isFhevmWindowType(window, this._trace);
+    const scope = getGlobalScope();
+    if (!scope) return false;
+    return isFhevmWindowType(scope, this._trace);
   }
 
   public load(): Promise<void> {
     console.log("[RelayerSDKLoader] load...");
-    // Ensure this only runs in the browser
-    if (typeof window === "undefined") {
-      console.log("[RelayerSDKLoader] window === undefined");
+    const scope = getGlobalScope();
+    if (!scope) {
+      console.log("[RelayerSDKLoader] global scope unavailable");
       return Promise.reject(
-        new Error("RelayerSDKLoader: can only be used in the browser.")
+        new Error("RelayerSDKLoader: global scope is undefined")
       );
     }
 
-    if ("relayerSDK" in window) {
-      if (!isFhevmRelayerSDKType(window.relayerSDK, this._trace)) {
-        console.log("[RelayerSDKLoader] window.relayerSDK === undefined");
+    if (!hasDomAPIs()) {
+      return this.loadWithoutDom(scope);
+    }
+
+    if ("relayerSDK" in scope) {
+      if (!isFhevmRelayerSDKType(scope.relayerSDK, this._trace)) {
+        console.log("[RelayerSDKLoader] relayerSDK present but invalid");
         throw new Error("RelayerSDKLoader: Unable to load FHEVM Relayer SDK");
       }
       return Promise.resolve();
@@ -40,7 +45,7 @@ export class RelayerSDKLoader {
         `script[src="${SDK_CDN_URL}"]`
       );
       if (existingScript) {
-        if (!isFhevmWindowType(window, this._trace)) {
+        if (!isFhevmWindowType(scope, this._trace)) {
           reject(
             new Error(
               "RelayerSDKLoader: window object does not contain a valid relayerSDK object."
@@ -57,7 +62,7 @@ export class RelayerSDKLoader {
       script.async = true;
 
       script.onload = () => {
-        if (!isFhevmWindowType(window, this._trace)) {
+        if (!isFhevmWindowType(scope, this._trace)) {
           console.log("[RelayerSDKLoader] script onload FAILED...");
           reject(
             new Error(
@@ -81,6 +86,37 @@ export class RelayerSDKLoader {
       document.head.appendChild(script);
       console.log("[RelayerSDKLoader] script added!")
     });
+  }
+
+  private async loadWithoutDom(scope: GlobalScope): Promise<void> {
+    console.log("[RelayerSDKLoader] loadWithoutDom");
+    if ("relayerSDK" in scope) {
+      if (!isFhevmRelayerSDKType(scope.relayerSDK, this._trace)) {
+        throw new Error("RelayerSDKLoader: relayerSDK is invalid in global scope.");
+      }
+      return;
+    }
+
+    try {
+      const module = await import("@zama-fhe/relayer-sdk/web");
+      const candidate =
+        (module as Record<string, unknown>).relayerSDK ??
+        (module as Record<string, unknown>).default ??
+        module;
+      if (!isFhevmRelayerSDKType(candidate, this._trace)) {
+        throw new Error(
+          "RelayerSDKLoader: relayer SDK module did not expose a valid relayerSDK object."
+        );
+      }
+      const scoped = scope as GlobalScope & { relayerSDK: FhevmRelayerSDKType };
+      scoped.relayerSDK = candidate;
+    } catch (error) {
+      const err = new Error(
+        "RelayerSDKLoader: Failed to load relayer SDK outside of the browser."
+      );
+      (err as any).cause = error;
+      throw err;
+    }
   }
 }
 
