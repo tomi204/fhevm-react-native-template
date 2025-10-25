@@ -75,7 +75,22 @@ pnpm start
 
 ## 📱 React Native Wallet Template
 
-`packages/react-native` now consumes a small HTTP “relayer” instead of running TFHE locally (mobile runtimes still lack `SharedArrayBuffer`). The UI mirrors the web demo, but all encryption/decryption happens in Node.
+`packages/react-native` now consumes the universal SDK’s **remote client**. TFHE runs inside the relayer, while the mobile app only calls:
+
+```ts
+import { createFheClient, useRemoteFheCounter } from "@fhevm-sdk";
+
+const client = await createFheClient({
+  contract: { address: "0x...", abi },
+  mode: "remote",
+  signer, // any ethers.Signer (wallet, wagmi, etc.)
+  relayer: { apiKey: process.env.FHE_API_KEY },
+});
+
+const counter = useRemoteFheCounter({ client });
+```
+
+Under the hood the SDK negotiates a session with the relayer (defaulting to the hosted endpoint if you don’t provide one) and exposes wagmi-like helpers so React Native, Vue, or any frontend can call `read`/`mutate` without touching low-level TFHE APIs.
 
 ### Quick start
 
@@ -108,7 +123,7 @@ pnpm mobile
 
 ## 🔌 FHE Relayer Service (Node)
 
-`packages/relayer-service` is an Express server that loads `@fhevm-sdk`, performs encrypt/decrypt on behalf of clients, and exposes a tiny REST API:
+`packages/relayer-service` is an Express server that loads `@fhevm-sdk`, performs encrypt/decrypt on behalf of clients, and exposes a tiny REST API. Every session is bound to a user address: the client signs each request (simple EIP-191 message) and the relayer verifies the signature + nonce before touching TFHE state. The universal SDK handles these signatures for you.
 
 - `GET /status` – reports chain, signer, and contract info.
 - `GET /counter` – returns the latest encrypted handle + decrypted value.
@@ -128,8 +143,9 @@ Environment variables:
 
 - `RPC_URL`: Hardhat or Sepolia RPC endpoint.
 - `PRIVATE_KEY`: signer that is allowed to decrypt and send counter transactions.
-- `CHAIN_ID`: chain where `FHECounter` is deployed (defaults to 31337).
+- `CHAIN_ID`: chain where `FHECounter` is deployed (defaults Sepolia = 11155111).
 - `PORT`: HTTP port (defaults to 4000).
+- `RELAYER_API_KEYS`: optional comma separated list to restrict access; clients send it as `x-relayer-key`.
 
 Point the React Native app to `http://10.0.2.2:4000` (Android emulator loopback) or expose the service publicly for real devices.
 

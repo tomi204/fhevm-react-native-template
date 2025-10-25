@@ -4,3 +4,6 @@ export * from "./fhevmTypes";
 export * from "./FhevmDecryptionSignature";
 export * from "./react/index";
 export * from "./remote/index";
+export * from "./universal/index";
+export * from "./universal/react/FheProvider";
+export * from "./abi/erc7984.js";

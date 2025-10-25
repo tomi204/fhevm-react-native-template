@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { RemoteFheClient } from "../remote/index.js";
+import type { FheClient } from "../universal/types.js";
 
 export const useRemoteFheCounter = (parameters: {
-  client: RemoteFheClient | undefined;
+  client: Pick<FheClient, "read" | "mutate"> | undefined;
   readFunctionName?: string;
   incrementFunctionName?: string;
   decrementFunctionName?: string;

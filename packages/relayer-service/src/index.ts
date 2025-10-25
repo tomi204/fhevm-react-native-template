@@ -20,6 +20,8 @@ type SessionConfig = {
   contractAddress: `0x${string}`;
   abi: AbiFragment[];
   contract: ethers.Contract;
+  userAddress: `0x${string}` | null;
+  nonce: number;
 };
 
 const envSchema = z.object({
@@ -65,10 +67,10 @@ function authenticate(req: express.Request, res: express.Response): boolean {
   return true;
 }
 
-function storeSession(contractAddress: `0x${string}`, abi: AbiFragment[]) {
+function storeSession(contractAddress: `0x${string}`, abi: AbiFragment[], userAddress: `0x${string}`) {
   const id = randomUUID();
   const contract = new ethers.Contract(contractAddress, abi, wallet);
-  const session: SessionConfig = { id, contractAddress, abi, contract };
+  const session: SessionConfig = { id, contractAddress, abi, contract, userAddress, nonce: 0 };
   sessions.set(id, session);
   return session;
 }
@@ -79,6 +81,32 @@ function getSession(sessionId: string): SessionConfig {
     throw new Error(`Unknown sessionId ${sessionId}. Call /v1/sessions first.`);
   }
   return session;
+}
+
+function buildAuthMessage(sessionId: string, functionName: string, values: number[], nonce: number) {
+  return `ZAMA_FHE_REQUEST:${sessionId}:${functionName}:${JSON.stringify(values ?? [])}:${nonce}`;
+}
+
+function verifyUserSignature(
+  session: SessionConfig,
+  functionName: string,
+  values: number[],
+  signature?: string,
+  nonce?: number,
+) {
+  if (!session.userAddress) return;
+  if (!signature || typeof nonce !== "number") {
+    throw new Error("Missing signature or nonce");
+  }
+  if (nonce !== session.nonce) {
+    throw new Error("Invalid nonce");
+  }
+  const message = buildAuthMessage(session.id, functionName, values, nonce);
+  const recovered = ethers.verifyMessage(message, signature);
+  if (recovered.toLowerCase() !== session.userAddress.toLowerCase()) {
+    throw new Error("Signature mismatch");
+  }
+  session.nonce += 1;
 }
 
 async function decryptHandle(handle: string, contractAddress: `0x${string}`) {
@@ -139,34 +167,40 @@ app.use(express.json());
 const sessionSchema = z.object({
   contractAddress: z.string().refine(value => ethers.isAddress(value), "Invalid contract address"),
   abi: z.array(z.record(z.string(), z.unknown())),
+  userAddress: z.string().refine(value => ethers.isAddress(value), "Invalid user address"),
   label: z.string().optional(),
 });
 
 app.post("/v1/sessions", (req, res) => {
   if (!authenticate(req, res)) return;
-  const { contractAddress, abi } = sessionSchema.parse(req.body);
-  const session = storeSession(contractAddress as `0x${string}`, abi);
+  const { contractAddress, abi, userAddress } = sessionSchema.parse(req.body);
+  const session = storeSession(contractAddress as `0x${string}`, abi, userAddress as `0x${string}`);
   res.json({
     sessionId: session.id,
     chainId: env.CHAIN_ID,
+    nonce: session.nonce,
   });
 });
 
 const readSchema = z.object({
   sessionId: z.string().uuid(),
   functionName: z.string().default("getCount"),
+  signature: z.string().optional(),
+  nonce: z.number().optional(),
 });
 
 app.post("/v1/fhe/read", async (req, res, next) => {
   if (!authenticate(req, res)) return;
   try {
-    const { sessionId, functionName } = readSchema.parse(req.body);
+    const { sessionId, functionName, signature, nonce } = readSchema.parse(req.body);
     const session = getSession(sessionId);
+    verifyUserSignature(session, functionName, [], signature, nonce);
     const handle: string = await session.contract[functionName]();
     const value = await decryptHandle(handle, session.contractAddress);
     res.json({
       handle,
       value: value.toString(),
+      nextNonce: session.nonce,
     });
   } catch (error) {
     next(error);
@@ -177,19 +211,23 @@ const mutateSchema = z.object({
   sessionId: z.string().uuid(),
   functionName: z.string(),
   values: z.array(z.number()).default([]),
+  signature: z.string().optional(),
+  nonce: z.number().optional(),
 });
 
 app.post("/v1/fhe/mutate", async (req, res, next) => {
   if (!authenticate(req, res)) return;
   try {
-    const { sessionId, functionName, values } = mutateSchema.parse(req.body);
+    const { sessionId, functionName, values, signature, nonce } = mutateSchema.parse(req.body);
     const session = getSession(sessionId);
+    verifyUserSignature(session, functionName, values, signature, nonce);
     const params = await encryptArgs(session, functionName, values);
     const tx = await session.contract[functionName](...params);
     const receipt = await tx.wait();
     res.json({
       txHash: tx.hash,
       blockNumber: receipt.blockNumber,
+      nextNonce: session.nonce,
     });
   } catch (error) {
     next(error);

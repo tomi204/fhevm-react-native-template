@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { createRemoteFheClient, useRemoteFheCounter, type RemoteFheClient } from "@fhevm-sdk";
+import { createFheClient, useRemoteFheCounter, type FheClient } from "@fhevm-sdk";
 import deployedContracts from "./contracts/deployedContracts";
 import { ActionButton, InfoRow, Section } from "./src/components";
 import { formatMessage } from "./src/utils/format";
+import { useEphemeralWallet } from "./src/hooks/useEphemeralWallet";
 
 const sepoliaContract = deployedContracts[11155111]?.FHECounter;
 const DEFAULT_RELAYER_OVERRIDE = "";
@@ -12,9 +13,10 @@ const DEFAULT_RELAYER_OVERRIDE = "";
 export default function App() {
   const [relayerOverride, setRelayerOverride] = useState(DEFAULT_RELAYER_OVERRIDE);
   const [draftUrl, setDraftUrl] = useState(DEFAULT_RELAYER_OVERRIDE);
-  const [client, setClient] = useState<RemoteFheClient | undefined>(undefined);
+  const [client, setClient] = useState<FheClient | undefined>(undefined);
   const [clientError, setClientError] = useState<string | undefined>(undefined);
   const [isClientLoading, setIsClientLoading] = useState<boolean>(false);
+  const wallet = useEphemeralWallet();
 
   const contractConfig = useMemo(() => sepoliaContract, []);
 
@@ -33,10 +35,17 @@ export default function App() {
     setIsClientLoading(true);
     setClient(undefined);
     setClientError(undefined);
-    createRemoteFheClient({
-      contractAddress: contractConfig.address as `0x${string}`,
-      abi: contractConfig.abi as any[],
-      baseUrl: effectiveBaseUrl,
+    createFheClient({
+      contract: {
+        address: contractConfig.address as `0x${string}`,
+        abi: contractConfig.abi as any[],
+        name: "FHECounter",
+      },
+      mode: "remote",
+      relayer: {
+        baseUrl: effectiveBaseUrl,
+      },
+      signer: wallet,
     })
       .then(created => {
         if (!cancelled) setClient(created);
@@ -82,9 +91,10 @@ export default function App() {
 
         <Section title="Session">
           <InfoRow label="Contract" value={contractConfig?.address ?? "—"} />
-          <InfoRow label="Relayer URL" value={client?.baseUrl ?? effectiveBaseUrl ?? "default"} />
-          <InfoRow label="Session ID" value={client?.sessionId ?? "—"} />
+          <InfoRow label="Relayer URL" value={client?.metadata?.relayerBaseUrl ?? effectiveBaseUrl ?? "default"} />
+          <InfoRow label="Session ID" value={client?.metadata?.sessionId ?? "—"} />
           <InfoRow label="Status" value={isClientLoading ? "Connecting…" : client ? "Ready" : "Idle"} />
+          <InfoRow label="User address" value={wallet.address} />
           {clientError && <Text style={[styles.status, styles.error]}>{clientError}</Text>}
         </Section>
 
