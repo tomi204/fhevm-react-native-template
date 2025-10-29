@@ -1,4 +1,27 @@
 import * as chains from "viem/chains";
+import { defineChain } from "viem";
+
+// Define Zama Devnet chain
+export const zamaDevnet = defineChain({
+  id: 8009,
+  name: "Zama Devnet",
+  nativeCurrency: {
+    name: "ZAMA",
+    symbol: "ZAMA",
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://devnet.zama.ai"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Zama Explorer",
+      url: "https://explorer.zama.ai",
+    },
+  },
+});
 
 export type BaseConfig = {
   targetNetworks: readonly chains.Chain[];
@@ -23,7 +46,7 @@ if (!rawAlchemyKey) {
 
 const scaffoldConfig = {
   // The networks on which your DApp is live
-  targetNetworks: [chains.hardhat, chains.sepolia],
+  targetNetworks: [chains.hardhat, chains.sepolia, zamaDevnet],
   // The interval at which your front-end polls the RPC servers for new data (it has no effect if you only target the local network (default is 4000))
   pollingInterval: 30000,
   // This is ours Alchemy's default API key.

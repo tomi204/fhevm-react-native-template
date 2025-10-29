@@ -300,7 +300,21 @@ export const createFhevmInstance = async (parameters: {
 
   const relayerSDK = scope.relayerSDK;
 
-  const aclAddress = relayerSDK.SepoliaConfig.aclContractAddress;
+  // Select config based on chainId
+  let sdkConfig;
+  if (chainId === 11155111) {
+    // Sepolia
+    sdkConfig = relayerSDK.SepoliaConfig;
+  } else if (chainId === 8009) {
+    // Zama Devnet - if available
+    sdkConfig = (relayerSDK as any).DevnetConfig || relayerSDK.SepoliaConfig;
+  } else {
+    // Fallback to Sepolia for unknown chains
+    console.warn(`Unknown chainId ${chainId}, falling back to SepoliaConfig`);
+    sdkConfig = relayerSDK.SepoliaConfig;
+  }
+
+  const aclAddress = sdkConfig.aclContractAddress;
   if (!checkIsAddress(aclAddress)) {
     throw new Error(`Invalid address: ${aclAddress}`);
   }
@@ -309,7 +323,7 @@ export const createFhevmInstance = async (parameters: {
   throwIfAborted();
 
   const config: FhevmInstanceConfig = {
-    ...relayerSDK.SepoliaConfig,
+    ...sdkConfig,
     network: providerOrUrl,
     publicKey: pub.publicKey,
     publicParams: pub.publicParams,

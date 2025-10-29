@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { type FheClient, createFheClient, useFheCounter } from "@fhevm-sdk";
+import { type FheClient, createFheClient, useFheCounter } from "fhevm-sdk";
 import { useAccount } from "wagmi";
 import { RainbowKitCustomConnectButton } from "~~/components/helper/RainbowKitCustomConnectButton";
 import { useDeployedContractInfo } from "~~/hooks/helper";
