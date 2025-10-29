@@ -6,6 +6,7 @@ export type FhevmChainConfig = {
   name: string;
   rpcUrl: string;
   isMock?: boolean;
+  contracts?: Record<string, ContractConfig>;
 };
 
 export type ContractConfig<TAbi extends Abi = Abi> = {

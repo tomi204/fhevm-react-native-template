@@ -31,18 +31,38 @@ export function useContract<TAbi extends Abi = Abi>(
       console.log("📝 useContract: Using direct address/abi", { address, hasAbi: !!abi });
       return { address, abi } as ContractConfig<TAbi>;
     }
-    if (name && config.contracts?.[name]) {
-      console.log("📝 useContract: Using contract by name", {
-        name,
-        address: config.contracts[name].address,
-        hasAbi: !!config.contracts[name].abi,
-        abiLength: Array.isArray(config.contracts[name].abi) ? config.contracts[name].abi.length : 'not array'
-      });
-      return config.contracts[name] as ContractConfig<TAbi>;
+    if (name) {
+      // First, try to find contract in current chain's contracts
+      const currentChain = config.chains.find(chain => chain.id === state.chainId);
+      if (currentChain?.contracts?.[name]) {
+        console.log("📝 useContract: Using per-chain contract", {
+          name,
+          chainId: state.chainId,
+          address: currentChain.contracts[name].address,
+          hasAbi: !!currentChain.contracts[name].abi,
+        });
+        return currentChain.contracts[name] as ContractConfig<TAbi>;
+      }
+
+      // Fall back to top-level contracts
+      if (config.contracts?.[name]) {
+        console.log("📝 useContract: Using top-level contract", {
+          name,
+          address: config.contracts[name].address,
+          hasAbi: !!config.contracts[name].abi,
+        });
+        return config.contracts[name] as ContractConfig<TAbi>;
+      }
     }
-    console.log("⚠️ useContract: No contract config found", { address, name, hasConfigContracts: !!config.contracts });
+    console.log("⚠️ useContract: No contract config found", {
+      address,
+      name,
+      chainId: state.chainId,
+      hasConfigContracts: !!config.contracts,
+      availableChains: config.chains.map(c => c.id)
+    });
     return undefined;
-  }, [address, abi, name, config.contracts]);
+  }, [address, abi, name, config.contracts, config.chains, state.chainId]);
 
   const providerOrSigner = useMemo(() => {
     if (mode === "write") {

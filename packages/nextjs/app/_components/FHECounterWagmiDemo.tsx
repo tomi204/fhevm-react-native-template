@@ -12,10 +12,13 @@ import { useAppKit } from "@reown/appkit/react";
 import toast from "react-hot-toast";
 
 function FHECounterWagmiDemoInner() {
-  const { isConnected, address } = useAccount();
+  const { isConnected, address, chainId } = useAccount();
   const { open } = useAppKit();
   const { instance, state } = useFhevmContext();
   const [amount, setAmount] = useState(1);
+
+  // Check if we're on a supported network (Localhost or Sepolia)
+  const isSupportedNetwork = chainId === 31337 || chainId === 11155111;
 
   // Log FHEVM context state for debugging
   useEffect(() => {
@@ -39,7 +42,7 @@ function FHECounterWagmiDemoInner() {
   } = useReadContract({
     name: "FHECounter",
     functionName: "getCount",
-    enabled: isConnected,
+    enabled: isConnected && isSupportedNetwork,
     watch: false, // We'll manually refetch after writes
   });
 
@@ -125,6 +128,34 @@ function FHECounterWagmiDemoInner() {
                 className="px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:scale-105 bg-blue-600 text-white hover:bg-blue-700"
               >
                 Connect Wallet
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isSupportedNetwork) {
+    return (
+      <div className="max-w-6xl mx-auto p-6 text-gray-900">
+        <div className="flex items-center justify-center">
+          <div className="bg-white border shadow-xl p-8 text-center rounded-lg">
+            <div className="mb-4">
+              <span className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-red-100 text-red-600 text-3xl">
+                🔴
+              </span>
+            </div>
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Wrong Network</h2>
+            <p className="text-gray-700 mb-6">
+              FHE Counter is available on Localhost (chainId 31337) and Sepolia (chainId 11155111). Please switch to a supported network.
+            </p>
+            <div className="flex items-center justify-center">
+              <button
+                onClick={() => open({ view: "Networks" })}
+                className="px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:scale-105 bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Switch Network
               </button>
             </div>
           </div>
