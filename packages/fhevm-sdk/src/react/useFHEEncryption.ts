@@ -45,28 +45,81 @@ export const toHex = (value: Uint8Array | string): `0x${string}` => {
 };
 
 // Build contract params from EncryptResult and ABI for a given function
-export const buildParamsFromAbi = (enc: EncryptResult, abi: any[], functionName: string): any[] => {
+export const buildParamsFromAbi = (
+  enc: EncryptResult,
+  abi: any[],
+  functionName: string,
+  originalArgs?: any[],
+): any[] => {
   const fn = abi.find((item: any) => item.type === "function" && item.name === functionName);
   if (!fn) throw new Error(`Function ABI not found for ${functionName}`);
 
-  return fn.inputs.map((input: any, index: number) => {
-    const raw = index === 0 ? enc.handles[0] : enc.inputProof;
-    switch (input.type) {
-      case "bytes32":
-      case "bytes":
-        return toHex(raw);
-      case "uint256":
-        return BigInt(raw as unknown as string);
-      case "address":
-      case "string":
-        return raw as unknown as string;
-      case "bool":
-        return Boolean(raw);
-      default:
-        console.warn(`Unknown ABI param type ${input.type}; passing as hex`);
-        return toHex(raw);
-    }
+  console.log("🔧 buildParamsFromAbi:", {
+    functionName,
+    inputs: fn.inputs,
+    originalArgsLength: originalArgs?.length,
+    handlesLength: enc.handles.length,
+    hasInputProof: !!enc.inputProof,
   });
+
+  let handleIndex = 0;
+
+  const result = fn.inputs.map((input: any, index: number) => {
+    const internalType = input.internalType || "";
+    const paramType = input.type || "";
+    const paramName = input.name || "";
+
+    console.log(`  📝 Processing param ${index}:`, {
+      name: paramName,
+      type: paramType,
+      internalType,
+    });
+
+    // Special case: if this is an inputProof parameter, use the encrypted inputProof
+    // This must be checked FIRST before checking if it's encrypted
+    if (paramType === "bytes" && paramName === "inputProof") {
+      const value = toHex(enc.inputProof);
+      console.log(`    ✓ inputProof bytes:`, value);
+      return value;
+    }
+
+    // Check if this input needs encryption
+    const isEncrypted = internalType.startsWith("euint") || internalType.startsWith("externalE");
+
+    if (!isEncrypted) {
+      // Return original argument for non-encrypted params
+      console.log(`    ✓ Non-encrypted, using original:`, originalArgs?.[index]);
+      return originalArgs?.[index];
+    }
+
+    // Handle encrypted types
+    if (internalType.startsWith("externalE")) {
+      // For externalE types, first param is handle, rest is inputProof
+      if (handleIndex === 0) {
+        handleIndex++;
+        const value = toHex(enc.handles[0]);
+        console.log(`    ✓ externalE handle:`, value);
+        return value;
+      } else {
+        const value = toHex(enc.inputProof);
+        console.log(`    ✓ externalE inputProof:`, value);
+        return value;
+      }
+    } else if (internalType.startsWith("euint")) {
+      // For euint types, just use the handle (no inputProof needed for euint direct types)
+      const handle = enc.handles[handleIndex];
+      handleIndex++;
+      const value = toHex(handle);
+      console.log(`    ✓ euint handle:`, value);
+      return value;
+    }
+
+    console.log(`    ⚠️ Fallback to original:`, originalArgs?.[index]);
+    return originalArgs?.[index];
+  });
+
+  console.log("✅ buildParamsFromAbi result:", result);
+  return result;
 };
 
 export const useFHEEncryption = (params: {

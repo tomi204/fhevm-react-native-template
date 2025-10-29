@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import {
-  useReadContract,
-  useWriteContract,
+  useTokenBalance,
+  useTokenTransfer,
   getUserFriendlyError,
-  useFhevmContext,
 } from "fhevm-sdk";
 import { useAccount } from "wagmi";
 import { useAppKit } from "@reown/appkit/react";
@@ -14,25 +13,27 @@ import toast from "react-hot-toast";
 function ConfidentialTokenDemoInner() {
   const { isConnected, address, chainId } = useAccount();
   const { open } = useAppKit();
-  const { instance, state } = useFhevmContext();
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
 
   // Check if we're on Sepolia
   const isSepoliaNetwork = chainId === 11155111;
 
-  // Read the encrypted balance
+  // Read the encrypted balance with auto-formatting
   const {
-    encryptedData: encryptedBalance,
-    decryptedData: balance,
+    balance,
+    balanceFormatted,
+    symbol,
+    decimals,
+    encryptedBalance,
     isLoading: isLoadingBalance,
     isDecrypting,
     refetch: refetchBalance,
     error: balanceError,
-  } = useReadContract({
+  } = useTokenBalance({
     name: "ConfidentialToken",
-    functionName: "confidentialBalanceOf",
-    args: [address],
+    account: address,
+    isConfidential: true,
     enabled: isConnected && isSepoliaNetwork,
     watch: false,
   });
@@ -42,21 +43,25 @@ function ConfidentialTokenDemoInner() {
     console.log("🔍 ConfidentialToken Balance Debug:", {
       encryptedBalance,
       balance,
+      balanceFormatted,
+      symbol,
+      decimals,
       isLoadingBalance,
       isDecrypting,
       balanceError: balanceError?.message,
     });
-  }, [encryptedBalance, balance, isLoadingBalance, isDecrypting, balanceError]);
+  }, [encryptedBalance, balance, balanceFormatted, symbol, decimals, isLoadingBalance, isDecrypting, balanceError]);
 
-  // Write operations (transfer)
+  // Transfer operations
   const {
-    write: transfer,
+    transfer,
     isLoading: isTransferring,
     isSuccess: transferSuccess,
     error: transferError,
     reset: resetTransfer,
-  } = useWriteContract({
+  } = useTokenTransfer({
     name: "ConfidentialToken",
+    isConfidential: true,
   });
 
   // Show success toast
@@ -86,17 +91,22 @@ function ConfidentialTokenDemoInner() {
       return;
     }
 
+    if (!decimals) {
+      toast.error("Token decimals not loaded");
+      return;
+    }
+
     try {
       console.log("🚀 Attempting transfer:", {
         recipient,
         amount,
-        hasInstance: !!instance,
-        hasSigner: !!state.signer,
+        decimals,
       });
 
       await transfer({
-        functionName: "confidentialTransfer",
-        args: [recipient, amount],
+        to: recipient as `0x${string}`,
+        amount,
+        decimals,
       });
     } catch (error) {
       console.error("❌ Transfer failed:", error);
@@ -192,7 +202,10 @@ function ConfidentialTokenDemoInner() {
                   <span className="text-lg text-gray-600">Decrypting...</span>
                 </div>
               ) : (
-                <p className="text-6xl font-bold text-purple-600">{balance?.toString() || "0"}</p>
+                <div className="flex flex-col items-center">
+                  <p className="text-6xl font-bold text-purple-600">{balance || "0"}</p>
+                  {symbol && <p className="text-xl text-gray-500 mt-2">{symbol}</p>}
+                </div>
               )}
             </div>
           </div>

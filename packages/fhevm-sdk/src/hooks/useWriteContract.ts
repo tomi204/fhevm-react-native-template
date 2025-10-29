@@ -35,7 +35,7 @@ export function useWriteContract<TAbi extends Abi = Abi>(
   parameters: UseWriteContractParameters<TAbi> = {},
 ): UseWriteContractReturnType {
   const { address, abi: contractAbi, name } = parameters;
-  const { contract, isReady, abi } = useContract({ address, abi: contractAbi, name, mode: "write" });
+  const { contract, isReady, abi, address: resolvedAddress } = useContract({ address, abi: contractAbi, name, mode: "write" });
   const { instance, state } = useFhevmContext();
 
   const [data, setData] = useState<ethers.TransactionReceipt | undefined>(undefined);
@@ -54,8 +54,23 @@ export function useWriteContract<TAbi extends Abi = Abi>(
 
   const encryptArgs = useCallback(
     async (functionName: string, args: any[]) => {
-      if (!instance || !state.signer || !address || !abi) {
-        throw new Error("Missing required parameters for encryption");
+      console.log("🔐 useWriteContract: Checking encryption requirements", {
+        hasInstance: !!instance,
+        hasSigner: !!state.signer,
+        resolvedAddress,
+        hasAbi: !!abi,
+        functionName,
+        args,
+      });
+
+      if (!instance || !state.signer || !resolvedAddress || !abi) {
+        const missing = [];
+        if (!instance) missing.push("instance");
+        if (!state.signer) missing.push("signer");
+        if (!resolvedAddress) missing.push("resolvedAddress");
+        if (!abi) missing.push("abi");
+
+        throw new Error(`Missing required parameters for encryption: ${missing.join(", ")}`);
       }
 
       const fnAbi = (abi as unknown as any[]).find(item => item.type === "function" && item.name === functionName);
@@ -72,20 +87,56 @@ export function useWriteContract<TAbi extends Abi = Abi>(
         return args; // Return args as-is if no encryption needed
       }
 
-      const userAddress = await state.signer.getAddress();
-      const input = instance.createEncryptedInput(address, userAddress);
+      console.log("🔐 useWriteContract: Encrypting args", {
+        functionName,
+        inputs: fnAbi.inputs,
+        args,
+      });
 
+      const userAddress = await state.signer.getAddress();
+      const input = instance.createEncryptedInput(resolvedAddress, userAddress);
+
+      // Build encrypted inputs
       fnAbi.inputs.forEach((inputParam: any, index: number) => {
-        if (inputParam.internalType?.startsWith("externalE")) {
-          const method = getEncryptionMethod(inputParam.internalType ?? "externalEuint32");
+        const internalType = inputParam.internalType || "";
+
+        // Handle externalE types (e.g., externalEuint64)
+        if (internalType.startsWith("externalE")) {
+          const method = getEncryptionMethod(internalType);
+          (input as any)[method](args[index] ?? 0);
+        }
+        // Handle euint types directly (e.g., euint64)
+        else if (internalType.startsWith("euint")) {
+          // Extract the bit size (e.g., "euint64" -> "64")
+          const bitSize = internalType.replace("euint", "");
+          const method = `add${bitSize}`;
+
+          console.log(`🔐 Encrypting ${inputParam.name} with ${method}`, {
+            value: args[index],
+            internalType,
+          });
+
           (input as any)[method](args[index] ?? 0);
         }
       });
 
       const encrypted = await input.encrypt();
-      return buildParamsFromAbi(encrypted, abi as unknown as any[], functionName);
+
+      console.log("✅ useWriteContract: Encrypted", {
+        handles: encrypted.handles,
+        inputProofLength: encrypted.inputProof?.length,
+      });
+
+      const finalArgs = buildParamsFromAbi(encrypted, abi as unknown as any[], functionName, args);
+
+      console.log("✅ useWriteContract: Final args", {
+        original: args,
+        final: finalArgs,
+      });
+
+      return finalArgs;
     },
-    [instance, state.signer, address, abi],
+    [instance, state.signer, resolvedAddress, abi],
   );
 
   const writeAsync = useCallback(
