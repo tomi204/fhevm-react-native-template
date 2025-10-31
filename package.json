@@ -58,6 +58,10 @@
     "relayer:dev": "pnpm --filter ./packages/relayer-service dev",
     "relayer:build": "pnpm --filter ./packages/relayer-service build",
     "relayer:start": "pnpm --filter ./packages/relayer-service start",
+    "docs:start": "pnpm --filter ./packages/docs start",
+    "docs:build": "pnpm --filter ./packages/docs build",
+    "docs:serve": "pnpm --filter ./packages/docs serve",
+    "docs:clear": "pnpm --filter ./packages/docs clear",
     "verify": "pnpm hardhat:verify",
     "verify:sepolia": "pnpm hardhat:verify:sepolia"
   },

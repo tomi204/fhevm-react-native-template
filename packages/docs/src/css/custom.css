@@ -1,0 +1,243 @@
+/**
+ * FHEVM SDK Documentation Custom Styles
+ */
+
+:root {
+  /* Primary Colors - Professional Blue/Purple gradient */
+  --ifm-color-primary: #5b47db;
+  --ifm-color-primary-dark: #4e3dc7;
+  --ifm-color-primary-darker: #4938bc;
+  --ifm-color-primary-darkest: #3c2f9b;
+  --ifm-color-primary-light: #6851ef;
+  --ifm-color-primary-lighter: #7360f0;
+  --ifm-color-primary-lightest: #9380f3;
+
+  /* Accent Colors */
+  --ifm-color-secondary: #00d4aa;
+  --ifm-color-success: #00d4aa;
+  --ifm-color-info: #5b47db;
+  --ifm-color-warning: #ffb800;
+  --ifm-color-danger: #ff4757;
+
+  /* Typography */
+  --ifm-font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --ifm-font-family-monospace: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+
+  /* Spacing */
+  --ifm-spacing-horizontal: 1.5rem;
+  --ifm-spacing-vertical: 1.5rem;
+
+  /* Code blocks */
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(91, 71, 219, 0.1);
+
+  /* Background */
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #f8f9fa;
+
+  /* Navbar */
+  --ifm-navbar-height: 3.75rem;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-navbar-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+  /* Footer */
+  --ifm-footer-background-color: #1a1b1e;
+
+  /* Link colors */
+  --ifm-link-color: var(--ifm-color-primary);
+  --ifm-link-hover-color: var(--ifm-color-primary-dark);
+}
+
+/* Dark mode overrides */
+[data-theme='dark'] {
+  --ifm-color-primary: #7360f0;
+  --ifm-color-primary-dark: #5b47db;
+  --ifm-color-primary-darker: #4e3dc7;
+  --ifm-color-primary-darkest: #4938bc;
+  --ifm-color-primary-light: #8977f2;
+  --ifm-color-primary-lighter: #9380f3;
+  --ifm-color-primary-lightest: #a798f5;
+
+  --ifm-background-color: #0d0e10;
+  --ifm-background-surface-color: #1a1b1e;
+
+  --ifm-navbar-background-color: #1a1b1e;
+
+  --docusaurus-highlighted-code-line-bg: rgba(115, 96, 240, 0.2);
+}
+
+/* Custom hero section */
+.hero {
+  background: linear-gradient(135deg, #5b47db 0%, #00d4aa 100%);
+  color: white;
+  padding: 4rem 2rem;
+}
+
+.hero__title {
+  font-size: 3rem;
+  font-weight: 800;
+}
+
+.hero__subtitle {
+  font-size: 1.5rem;
+  opacity: 0.9;
+}
+
+/* Feature cards */
+.feature {
+  padding: 2rem;
+  border-radius: 8px;
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.feature:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(91, 71, 219, 0.15);
+}
+
+/* Code blocks */
+.theme-code-block {
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+pre {
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* Admonitions */
+.admonition {
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+/* Tables */
+table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.menu__link {
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.menu__link--active {
+  background: linear-gradient(90deg, rgba(91, 71, 219, 0.1) 0%, transparent 100%);
+  border-left: 3px solid var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+/* Navbar */
+.navbar {
+  backdrop-filter: blur(8px);
+}
+
+.navbar__link--active {
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+/* Search bar */
+.navbar__search-input {
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+}
+
+/* Buttons */
+.button {
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.button--primary {
+  background: linear-gradient(135deg, #5b47db 0%, #7360f0 100%);
+  border: none;
+}
+
+.button--primary:hover {
+  background: linear-gradient(135deg, #4e3dc7 0%, #5b47db 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(91, 71, 219, 0.3);
+}
+
+.button--secondary {
+  background: var(--ifm-color-secondary);
+  color: white;
+  border: none;
+}
+
+/* Pagination */
+.pagination-nav__link {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.pagination-nav__link:hover {
+  border-color: var(--ifm-color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(91, 71, 219, 0.1);
+}
+
+/* TOC */
+.table-of-contents__link--active {
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+.table-of-contents__link:hover {
+  color: var(--ifm-color-primary);
+}
+
+/* Custom badge styles */
+.badge {
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge--primary {
+  background: var(--ifm-color-primary);
+  color: white;
+}
+
+.badge--secondary {
+  background: var(--ifm-color-secondary);
+  color: white;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ifm-background-surface-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ifm-color-emphasis-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ifm-color-primary);
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in-out;
+}
