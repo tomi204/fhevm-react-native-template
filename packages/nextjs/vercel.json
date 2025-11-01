@@ -1,5 +1,5 @@
 {
-  "installCommand": "corepack enable pnpm && corepack prepare pnpm@10.9.0 --activate && pnpm install --ignore-scripts && pnpm sdk:build",
+  "installCommand": "cd ../.. && corepack enable pnpm && corepack prepare pnpm@10.9.0 --activate && pnpm install --ignore-scripts && pnpm sdk:build",
   "buildCommand": "cd ../.. && pnpm --filter ./packages/nextjs build",
   "outputDirectory": ".next",
   "build": {
