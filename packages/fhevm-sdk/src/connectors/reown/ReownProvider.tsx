@@ -30,6 +30,18 @@ function FhevmWalletSync() {
   const { data: walletClient } = useWalletClient();
   const [signer, setSigner] = React.useState<ethers.Signer | undefined>(undefined);
   const [provider, setProvider] = React.useState<ethers.Provider | undefined>(undefined);
+  const eip1193 = React.useMemo(() => {
+    if (!walletClient) return undefined;
+    if (typeof walletClient.request !== "function") return undefined;
+    return {
+      request: async ({ method, params }: { method: string; params?: unknown[] }) => {
+        return walletClient.request({
+          method: method as any,
+          params: (params ?? []) as any,
+        });
+      },
+    } as any;
+  }, [walletClient]);
 
   // Only render on client side to avoid SSR context issues
   React.useEffect(() => {
@@ -49,10 +61,11 @@ function FhevmWalletSync() {
 
   // Always call the hook, but pass mounted state to control sync
   useSyncWithWallet({
-    chainId: mounted ? chainId : undefined,
-    address: mounted ? address : undefined,
-    signer: mounted ? signer : undefined,
-    provider: mounted ? provider : undefined,
+    chainId,
+    address,
+    signer,
+    provider,
+    eip1193Provider: eip1193,
   });
 
   return null;

@@ -26,6 +26,10 @@
     "./react": {
       "types": "./src/react/index.ts",
       "default": "./dist/react/index.js"
+    },
+    "./connectors/reown": {
+      "types": "./src/connectors/reown/index.ts",
+      "default": "./dist/connectors/reown/index.js"
     }
   },
   "scripts": {

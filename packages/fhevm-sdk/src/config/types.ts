@@ -21,6 +21,10 @@ export type FhevmConfig = {
   relayer?: {
     baseUrl?: string;
     apiKey?: string;
+    wasm?: {
+      tfhe?: string;
+      kms?: string;
+    };
   };
   defaultMode?: "local" | "remote";
   cache?: {

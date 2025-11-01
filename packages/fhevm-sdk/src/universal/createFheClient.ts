@@ -31,6 +31,7 @@ const withRemoteMode = async (options: CreateFheClientOptions & { mode?: "remote
     metadata: {
       relayerBaseUrl: remote.baseUrl,
       sessionId: remote.sessionId,
+      authorizationPublicKey: remote.authorizationPublicKey,
     },
     read: function (functionName = "getCount") {
       return controller.remote.read(functionName);
@@ -50,6 +51,7 @@ const withLocalMode = async (options: CreateFheClientOptions & { mode: "local" }
     provider: options.provider,
     mockChains: options.mockChains,
     signal: abortController.signal,
+    wasm: options.wasm,
   });
   const getInstance = async () => instancePromise;
 

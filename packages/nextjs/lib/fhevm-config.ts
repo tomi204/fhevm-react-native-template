@@ -47,6 +47,12 @@ export const fhevmConfig = createConfig({
     enabled: true,
     ttl: 60000, // 1 minute
   },
+  relayer: {
+    wasm: {
+      tfhe: "/fhevm/tfhe_bg.wasm",
+      kms: "/fhevm/kms_lib_bg.wasm",
+    },
+  },
 });
 
 // Note: Per-chain contracts are configured above in the chains array.

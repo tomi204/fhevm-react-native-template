@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { InMemoryStorageProvider, FhevmProvider, ReownProvider } from "fhevm-sdk";
+import { InMemoryStorageProvider, FhevmProvider } from "fhevm-sdk";
+import { ReownProvider } from "fhevm-sdk/connectors/reown";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { useTheme } from "next-themes";
 import { Toaster } from "react-hot-toast";
@@ -46,7 +47,7 @@ export const DappWrapperWithReown = ({ children }: { children: React.ReactNode }
   return (
     <FhevmProvider config={fhevmConfig}>
       <ReownProvider
-        wagmiAdapter={wagmiAdapter}
+        wagmiAdapter={wagmiAdapter as any}
         projectId={scaffoldConfig.walletConnectProjectId}
         metadata={{
           name: "FHEVM dApp",

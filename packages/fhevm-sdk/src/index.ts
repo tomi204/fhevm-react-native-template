@@ -12,4 +12,6 @@ export * from "./abi/erc7984.js";
 export * from "./config/index.js";
 export * from "./hooks/index.js";
 export * from "./utils/index.js";
-export * from "./connectors/reown/index.js";
+
+// Reown connectors (web-only) are exposed via subpath import
+// Import from "fhevm-sdk/connectors/reown" when needed

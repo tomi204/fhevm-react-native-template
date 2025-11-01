@@ -15,6 +15,10 @@ export type RemoteModeConfig = {
   relayer?: {
     baseUrl?: string;
     apiKey?: string;
+    wasm?: {
+      tfhe?: string;
+      kms?: string;
+    };
   };
 };
 
@@ -24,6 +28,10 @@ export type LocalModeConfig = {
   signer: ethers.Signer;
   chainId?: number;
   mockChains?: Record<number, string>;
+  wasm?: {
+    tfhe?: string;
+    kms?: string;
+  };
 };
 
 export type CreateFheClientOptions = {
@@ -41,6 +49,7 @@ export type FheClient = {
   metadata?: {
     relayerBaseUrl?: string;
     sessionId?: string;
+    authorizationPublicKey?: string;
   };
   [Symbol.asyncDispose]?: () => Promise<void>;
 };

@@ -67,6 +67,7 @@ export function FhevmProvider({ config, children, initialChainId }: FhevmProvide
       provider: state.eip1193Provider,
       mockChains: Object.keys(mockChains).length > 0 ? mockChains : undefined,
       signal: abortController.signal,
+      wasm: state.config.relayer?.wasm,
     })
       .then(newInstance => {
         if (!cancelled) {
@@ -118,20 +119,30 @@ export function useSyncWithWallet(params: {
   address?: string;
   signer?: ethers.Signer;
   provider?: ethers.Provider;
+  eip1193Provider?: unknown;
 }) {
   const { updateState } = useFhevmContext();
-  const { chainId, address, signer, provider } = params;
+  const { chainId, address, signer, provider, eip1193Provider } = params;
 
   useEffect(() => {
-    // Get EIP-1193 provider from window.ethereum
-    const eip1193Provider = typeof window !== "undefined" ? (window as any).ethereum : undefined;
+    const fromWindow = typeof window !== "undefined" ? (window as any).ethereum : undefined;
+    const fromProvider =
+      provider && typeof (provider as any).send === "function"
+        ? {
+            request: async ({ method, params }: { method: string; params?: unknown[] }) => {
+              return (provider as any).send(method, params ?? []);
+            },
+          }
+        : undefined;
+
+    const effectiveEip1193 = eip1193Provider ?? fromWindow ?? fromProvider;
 
     console.log("📡 useSyncWithWallet updating state:", {
       chainId,
       address,
       hasSigner: !!signer,
       hasProvider: !!provider,
-      hasEip1193Provider: !!eip1193Provider,
+      hasEip1193Provider: !!effectiveEip1193,
     });
 
     const updates = {
@@ -139,10 +150,10 @@ export function useSyncWithWallet(params: {
       account: address,
       signer,
       provider,
-      eip1193Provider,
+      eip1193Provider: effectiveEip1193,
     };
 
     console.log("📡 Calling updateState with:", updates);
     updateState(updates);
-  }, [chainId, address, signer, provider, updateState]);
+  }, [chainId, address, signer, provider, eip1193Provider, updateState]);
 }

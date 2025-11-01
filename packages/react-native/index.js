@@ -1,24 +1,15 @@
-import "react-native-gesture-handler";
-import "react-native-get-random-values";
-import "react-native-url-polyfill/auto";
-import { Buffer } from "buffer";
-import process from "process";
-
-if (typeof globalThis.Buffer === "undefined") {
-  globalThis.Buffer = Buffer;
-}
-
-if (typeof globalThis.process === "undefined") {
-  globalThis.process = process;
-} else if (!(globalThis.process && globalThis.process.version)) {
-  globalThis.process.env = globalThis.process.env || {};
-}
-
-if (typeof globalThis.SharedArrayBuffer === "undefined") {
-  globalThis.SharedArrayBuffer = globalThis.ArrayBuffer;
-}
-
 import { registerRootComponent } from "expo";
 import App from "./App";
+
+// Solo polyfills esenciales
+import "react-native-get-random-values";
+
+// Buffer y process
+import { Buffer } from "buffer";
+global.Buffer = Buffer;
+
+if (typeof global.process === "undefined") {
+  global.process = require("process");
+}
 
 registerRootComponent(App);

@@ -6,13 +6,15 @@ import { useAccount } from "wagmi";
 import { RainbowKitCustomConnectButton } from "~~/components/helper/RainbowKitCustomConnectButton";
 import { useDeployedContractInfo } from "~~/hooks/helper";
 import { useWagmiEthers } from "~~/hooks/wagmi/useWagmiEthers";
+import { fhevmConfig } from "~~/lib/fhevm-config";
 
 export const FHECounterDemo = () => {
   const { isConnected, chain } = useAccount();
   const chainId = chain?.id;
   const initialMockChains = { 31337: "http://localhost:8545" };
   const eip1193Provider = useMemo(() => (typeof window !== "undefined" ? (window as any).ethereum : undefined), []);
-  const { data: fheCounterContract } = useDeployedContractInfo({ contractName: "FHECounter", chainId });
+  const supportedChainId = chainId === 31337 || chainId === 11155111 || chainId === 8009 ? chainId : undefined;
+  const { data: fheCounterContract } = useDeployedContractInfo({ contractName: "FHECounter", chainId: supportedChainId });
   const { ethersSigner } = useWagmiEthers(initialMockChains);
 
   const [client, setClient] = useState<FheClient | undefined>(undefined);
@@ -20,7 +22,7 @@ export const FHECounterDemo = () => {
   const [clientError, setClientError] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!ethersSigner || !fheCounterContract?.address || !eip1193Provider) {
+    if (!ethersSigner || !fheCounterContract?.address || !fheCounterContract?.abi || !eip1193Provider) {
       setClient(undefined);
       setClientStatus("idle");
       setClientError(undefined);
@@ -32,7 +34,7 @@ export const FHECounterDemo = () => {
     createFheClient({
       contract: {
         address: fheCounterContract.address as `0x${string}`,
-        abi: fheCounterContract.abi as any[],
+        abi: Array.from(fheCounterContract.abi) as any[],
         name: "FHECounter",
       },
       mode: "local",
@@ -40,6 +42,7 @@ export const FHECounterDemo = () => {
       signer: ethersSigner,
       chainId,
       mockChains: initialMockChains,
+      wasm: fhevmConfig.relayer?.wasm,
     })
       .then(newClient => {
         if (cancelled) return;

@@ -1,6 +1,8 @@
 PODS:
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
+  - EXApplication (6.0.2):
+    - ExpoModulesCore
   - EXConstants (17.0.8):
     - ExpoModulesCore
   - Expo (52.0.47):
@@ -1321,7 +1323,30 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - react-native-compat (2.23.0):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.10.14.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - react-native-get-random-values (1.11.0):
+    - React-Core
+  - react-native-netinfo (11.4.1):
     - React-Core
   - react-native-safe-area-context (4.12.0):
     - React-Core
@@ -1642,12 +1667,15 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNSVG (15.8.0):
+    - React-Core
   - SocketRocket (0.7.1)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
   - "boost (from `../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/third-party-podspecs/boost.podspec`)"
   - "DoubleConversion (from `../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)"
+  - EXApplication (from `../../../node_modules/expo-application/ios`)
   - EXConstants (from `../../../node_modules/expo-constants/ios`)
   - "Expo (from `../../../node_modules/.pnpm/expo@52.0.47_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__bufferutil_9e7b1606f75dde0c47b460aba6900f52/node_modules/expo`)"
   - ExpoAsset (from `../../../node_modules/expo-asset/ios`)
@@ -1691,7 +1719,9 @@ DEPENDENCIES:
   - "React-logger (from `../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/ReactCommon/logger`)"
   - "React-Mapbuffer (from `../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/ReactCommon`)"
   - "React-microtasksnativemodule (from `../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)"
+  - "react-native-compat (from `../../../node_modules/@walletconnect/react-native-compat`)"
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
+  - "react-native-netinfo (from `../../../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "React-nativeconfig (from `../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/ReactCommon`)"
   - "React-NativeModulesApple (from `../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)"
@@ -1723,6 +1753,7 @@ DEPENDENCIES:
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNScreens (from `../node_modules/react-native-screens`)
+  - RNSVG (from `../../../node_modules/react-native-svg`)
   - "Yoga (from `../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/ReactCommon/yoga`)"
 
 SPEC REPOS:
@@ -1734,6 +1765,8 @@ EXTERNAL SOURCES:
     :podspec: "../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/third-party-podspecs/boost.podspec"
   DoubleConversion:
     :podspec: "../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
+  EXApplication:
+    :path: "../../../node_modules/expo-application/ios"
   EXConstants:
     :path: "../../../node_modules/expo-constants/ios"
   Expo:
@@ -1817,8 +1850,12 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-compat:
+    :path: "../../../node_modules/@walletconnect/react-native-compat"
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
+  react-native-netinfo:
+    :path: "../../../node_modules/@react-native-community/netinfo"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   React-nativeconfig:
@@ -1881,12 +1918,15 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-gesture-handler"
   RNScreens:
     :path: "../node_modules/react-native-screens"
+  RNSVG:
+    :path: "../../../node_modules/react-native-svg"
   Yoga:
     :path: "../../../node_modules/.pnpm/react-native@0.76.9_@babel+core@7.28.5_@babel+preset-env@7.28.5_@babel+core@7.28.5__@ty_bb4ce14671c0c3a2f73f0c09500d3f3e/node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
+  EXApplication: 4c72f6017a14a65e338c5e74fca418f35141e819
   EXConstants: fcfc75800824ac2d5c592b5bc74130bad17b146b
   Expo: 1687edb10c76b0c0f135306d6ae245379f50ed54
   ExpoAsset: 48386d40d53a8c1738929b3ed509bcad595b5516
@@ -1928,7 +1968,9 @@ SPEC CHECKSUMS:
   React-logger: c4052eb941cca9a097ef01b59543a656dc088559
   React-Mapbuffer: 33546a3ebefbccb8770c33a1f8a5554fa96a54de
   React-microtasksnativemodule: 5c3d795318c22ab8df55100e50b151384a4a60b3
+  react-native-compat: aa9f2e34158f2bae0871b8c87f21f9fff4860c72
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
+  react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-safe-area-context: 8b8404e70b0cbf2a56428a17017c14c1dcc16448
   React-nativeconfig: 8efdb1ef1e9158c77098a93085438f7e7b463678
   React-NativeModulesApple: cebca2e5320a3d66e123cade23bd90a167ffce5e
@@ -1960,6 +2002,7 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: aa75595c1aefa18f868452091fa0c411a516ce11
   RNGestureHandler: 32336458ef842088a459ccfcc10b583186de2633
   RNScreens: 295d9c0aaeb7f680d03d7e9b476569a4959aae89
+  RNSVG: 8542aa11770b27563714bbd8494a8436385fc85f
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: feb4910aba9742cfedc059e2b2902e22ffe9954a
 

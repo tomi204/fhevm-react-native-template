@@ -7,6 +7,10 @@ export type CreateConfigParameters = {
   relayer?: {
     baseUrl?: string;
     apiKey?: string;
+    wasm?: {
+      tfhe?: string;
+      kms?: string;
+    };
   };
   defaultMode?: "local" | "remote";
   cache?: {

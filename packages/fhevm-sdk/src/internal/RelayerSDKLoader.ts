@@ -29,7 +29,7 @@ export class RelayerSDKLoader {
     }
 
     if (!hasDomAPIs()) {
-      return this.loadWithoutDom(scope);
+      return this.loadWithoutDom(scope, () => this.importRelayerSdkForNode());
     }
 
     if ("relayerSDK" in scope) {
@@ -40,19 +40,49 @@ export class RelayerSDKLoader {
       return Promise.resolve();
     }
 
+    // Try dynamic import first (avoids CORS issues with CDN)
+    return this.loadWithoutDom(scope, () => this.importRelayerSdkForWeb()).catch(err => {
+      console.log("[RelayerSDKLoader] Web import failed, falling back to script", err);
+      if (typeof document === "undefined") {
+        return this.loadWithoutDom(scope, () => this.importRelayerSdkForNode());
+      }
+      return this.loadViaScript(scope);
+    });
+  }
+
+  private loadViaScript(scope: GlobalScope): Promise<void> {
     return new Promise((resolve, reject) => {
       const existingScript = document.querySelector(
         `script[src="${SDK_CDN_URL}"]`
       );
       if (existingScript) {
-        if (!isFhevmWindowType(scope, this._trace)) {
-          reject(
-            new Error(
-              "RelayerSDKLoader: window object does not contain a valid relayerSDK object."
-            )
-          );
+        const scriptElement = existingScript as HTMLScriptElement & { readyState?: string };
+        const onLoad = () => {
+          scriptElement.removeEventListener("load", onLoad);
+          scriptElement.removeEventListener("error", onError);
+          if (!isFhevmWindowType(scope, this._trace)) {
+            this.loadWithoutDom(scope, () => this.importRelayerSdkForWeb())
+              .then(resolve)
+              .catch(reject);
+            return;
+          }
+          resolve();
+        };
+        const onError = () => {
+          scriptElement.removeEventListener("load", onLoad);
+          scriptElement.removeEventListener("error", onError);
+          this.loadWithoutDom(scope, () => this.importRelayerSdkForWeb())
+            .then(resolve)
+            .catch(reject);
+        };
+
+        scriptElement.addEventListener("load", onLoad);
+        scriptElement.addEventListener("error", onError);
+
+        if (scriptElement.readyState === "complete") {
+          onLoad();
         }
-        resolve();
+
         return;
       }
 
@@ -61,34 +91,42 @@ export class RelayerSDKLoader {
       script.type = "text/javascript";
       script.async = true;
 
-      script.onload = () => {
+      const scriptElement: HTMLScriptElement & { readyState?: string } = script;
+      const onLoad = () => {
+        scriptElement.removeEventListener("load", onLoad);
+        scriptElement.removeEventListener("error", onError);
         if (!isFhevmWindowType(scope, this._trace)) {
           console.log("[RelayerSDKLoader] script onload FAILED...");
-          reject(
-            new Error(
-              `RelayerSDKLoader: Relayer SDK script has been successfully loaded from ${SDK_CDN_URL}, however, the window.relayerSDK object is invalid.`
-            )
-          );
+          this.loadWithoutDom(scope, () => this.importRelayerSdkForWeb())
+            .then(resolve)
+            .catch(reject);
+          return;
         }
         resolve();
       };
 
-      script.onerror = () => {
+      const onError = () => {
+        scriptElement.removeEventListener("load", onLoad);
+        scriptElement.removeEventListener("error", onError);
         console.log("[RelayerSDKLoader] script onerror... ");
-        reject(
-          new Error(
-            `RelayerSDKLoader: Failed to load Relayer SDK from ${SDK_CDN_URL}`
-          )
-        );
+        this.loadWithoutDom(scope, () => this.importRelayerSdkForWeb())
+          .then(resolve)
+          .catch(reject);
       };
+
+      scriptElement.addEventListener("load", onLoad);
+      scriptElement.addEventListener("error", onError);
 
       console.log("[RelayerSDKLoader] add script to DOM...");
       document.head.appendChild(script);
-      console.log("[RelayerSDKLoader] script added!")
+      console.log("[RelayerSDKLoader] script added!");
     });
   }
 
-  private async loadWithoutDom(scope: GlobalScope): Promise<void> {
+  private async loadWithoutDom(
+    scope: GlobalScope,
+    importer: () => Promise<Record<string, unknown>>
+  ): Promise<void> {
     console.log("[RelayerSDKLoader] loadWithoutDom");
     if ("relayerSDK" in scope) {
       if (!isFhevmRelayerSDKType(scope.relayerSDK, this._trace)) {
@@ -98,11 +136,8 @@ export class RelayerSDKLoader {
     }
 
     try {
-      const module = await import("@zama-fhe/relayer-sdk/web");
-      const candidate =
-        (module as Record<string, unknown>).relayerSDK ??
-        (module as Record<string, unknown>).default ??
-        module;
+      const module = await importer();
+      const candidate = normalizeRelayerSdkModule(module, this._trace);
       if (!isFhevmRelayerSDKType(candidate, this._trace)) {
         throw new Error(
           "RelayerSDKLoader: relayer SDK module did not expose a valid relayerSDK object."
@@ -118,6 +153,47 @@ export class RelayerSDKLoader {
       throw err;
     }
   }
+
+  private async importRelayerSdkForNode() {
+    try {
+      return await import("@zama-fhe/relayer-sdk/node");
+    } catch {
+      return import("@zama-fhe/relayer-sdk/bundle");
+    }
+  }
+
+  private async importRelayerSdkForWeb() {
+    try {
+      return await import("@zama-fhe/relayer-sdk/web");
+    } catch {
+      return this.importRelayerSdkForNode();
+    }
+  }
+}
+
+function normalizeRelayerSdkModule(
+  module: Record<string, unknown>,
+  trace?: TraceType
+) {
+  const candidate =
+    module.relayerSDK ?? module.default ?? module;
+
+  if (
+    candidate &&
+    typeof candidate === "object" &&
+    "createInstance" in candidate &&
+    typeof (candidate as any).createInstance === "function" &&
+    !("initSDK" in candidate)
+  ) {
+    trace?.("[RelayerSDKLoader] Detected Node SDK shape; creating shim");
+    return {
+      ...(candidate as Record<string, unknown>),
+      initSDK: async () => true,
+      __initialized__: true,
+    } satisfies Partial<FhevmRelayerSDKType>;
+  }
+
+  return candidate;
 }
 
 function isFhevmRelayerSDKType(

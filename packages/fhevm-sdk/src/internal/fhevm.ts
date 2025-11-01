@@ -220,6 +220,10 @@ export const createFhevmInstance = async (parameters: {
   mockChains?: Record<number, string>;
   signal: AbortSignal;
   onStatusChange?: (status: FhevmRelayerStatusType) => void;
+  wasm?: {
+    tfhe?: string;
+    kms?: string;
+  };
 }): Promise<FhevmInstance> => {
   const throwIfAborted = () => {
     if (signal.aborted) throw new FhevmAbortError();
@@ -287,7 +291,10 @@ export const createFhevmInstance = async (parameters: {
     notify("sdk-initializing");
 
     // throws an error if failed
-    await fhevmInitSDK();
+    await fhevmInitSDK({
+      tfheParams: parameters.wasm?.tfhe,
+      kmsParams: parameters.wasm?.kms,
+    });
     throwIfAborted();
 
     notify("sdk-initialized");

@@ -25,7 +25,7 @@ function FHECounterWagmiDemoInner() {
     console.log("🔐 FHEVM Context State:", {
       hasInstance: !!instance,
       hasSigner: !!state.signer,
-      hasAddress: !!state.address,
+      hasAddress: !!state.account,
       chainId: state.chainId,
       isInitialized: !!instance && !!state.signer,
     });
@@ -83,7 +83,7 @@ function FHECounterWagmiDemoInner() {
         amount,
         hasInstance: !!instance,
         hasSigner: !!state.signer,
-        address: state.address,
+        address: state.account,
         chainId: state.chainId,
       });
 
