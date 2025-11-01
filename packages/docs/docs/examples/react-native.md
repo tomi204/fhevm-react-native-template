@@ -4,161 +4,214 @@ sidebar_position: 4
 
 # React Native
 
-Using the FHEVM SDK in React Native applications with WalletConnect/Reown.
+Using the FHEVM SDK in React Native applications with Reown AppKit (WalletConnect).
+
+## Overview
+
+The React Native implementation uses a **relayer-based architecture** where encryption/decryption operations are performed server-side. This provides:
+
+- Faster initialization (no WASM loading)
+- Smaller bundle size
+- Better performance on mobile devices
+- Lower memory footprint
+
+## Architecture
+
+```
+┌─────────────┐
+│React Native │
+│     App     │
+└──────┬──────┘
+       │
+       │ HTTP requests
+       ▼
+┌─────────────┐      ┌──────────────┐
+│   Relayer   │◄─────┤ FHEVM Instance│
+│   Service   │      │  (fhevmjs)   │
+└──────┬──────┘      └──────────────┘
+       │
+       │ encrypts/decrypts
+       ▼
+┌─────────────┐
+│  Ethereum   │
+│   Network   │
+└─────────────┘
+```
 
 ## Installation
 
 ```bash
-npm install @fhevm/sdk ethers
-npm install @reown/appkit-react-native @reown/appkit-wagmi-react-native
+# Install dependencies
+npm install fhevm-sdk ethers
+npm install @reown/appkit-react-native @walletconnect/react-native-compat
 ```
+
+## Relayer Setup
+
+First, start the relayer service:
+
+```bash
+cd packages/relayer-service
+cp .env.example .env
+# Edit .env with your RPC_URL and PRIVATE_KEY
+npm run dev
+```
+
+The relayer will run on `http://localhost:4000`
 
 ## Configuration
 
 ```typescript
-// config.ts
-import { createConfig } from '@fhevm/sdk';
-
-export const fhevmConfig = createConfig({
-  chains: [
-    {
-      id: 8009,
-      name: 'Zama Devnet',
-      rpcUrl: 'https://devnet.zama.ai',
-    },
-  ],
-  defaultMode: 'remote', // Use remote mode for mobile
-  relayer: {
-    baseUrl: 'https://relayer.zama.ai',
-  },
-  cache: {
-    enabled: true,
-    ttl: 60000,
-  },
-});
+// No config needed for relayer mode
+// The SDK connects directly to the relayer
 ```
 
-## App Setup
+## Wallet Connection with Reown
 
 ```typescript
-// App.tsx
-import { FhevmProvider } from '@fhevm/sdk';
-import { WagmiProvider } from 'wagmi';
-import { fhevmConfig } from './config';
-import { wagmiConfig } from './wagmi';
-import { Counter } from './Counter';
+// src/hooks/useWallet.ts
+import { useMemo } from 'react';
+import { useAppKitProvider, useAppKitAccount } from '@reown/appkit-react-native';
+import { ethers, BrowserProvider } from 'ethers';
 
-export default function App() {
-  return (
-    <WagmiProvider config={wagmiConfig}>
-      <FhevmProvider config={fhevmConfig}>
-        <Counter />
-      </FhevmProvider>
-    </WagmiProvider>
-  );
+export function useWallet() {
+  const { walletProvider } = useAppKitProvider('eip155');
+  const { address, isConnected } = useAppKitAccount();
+
+  const signer = useMemo(() => {
+    if (!walletProvider || !isConnected) return null;
+    const provider = new BrowserProvider(walletProvider);
+    return provider.getSigner();
+  }, [walletProvider, isConnected]);
+
+  return {
+    address,
+    isConnected,
+    signer,
+  };
 }
 ```
 
-## Wallet Connection
+## FHE Client Setup
 
 ```typescript
-import { useAccount, useWalletClient } from 'wagmi';
-import { useSyncWithWallet } from '@fhevm/sdk';
-import { useMemo } from 'react';
-import { BrowserProvider } from 'ethers';
+// src/hooks/useFhevmClient.ts
+import { useState, useEffect } from 'react';
+import { useFhevmClient as useRemoteClient } from 'fhevm-sdk';
+import { useWallet } from './useWallet';
 
-export function useWalletSync() {
-  const { address, chainId } = useAccount();
-  const { data: walletClient } = useWalletClient();
+export function useFhevmClient({ contractAddress, contractAbi, contractName, relayerBaseUrl }) {
+  const { signer, address, isConnected } = useWallet();
+  const [client, setClient] = useState(null);
+  const [isReady, setIsReady] = useState(false);
 
-  const ethersSigner = useMemo(() => {
-    if (!walletClient) return undefined;
-    const provider = new BrowserProvider(walletClient);
-    return provider.getSigner();
-  }, [walletClient]);
+  useEffect(() => {
+    if (!signer || !isConnected || !contractAddress) {
+      setClient(null);
+      setIsReady(false);
+      return;
+    }
 
-  useSyncWithWallet({
-    address,
-    chainId,
-    signer: ethersSigner,
-  });
+    let cancelled = false;
+
+    createFheClient({
+      contract: {
+        address: contractAddress,
+        abi: contractAbi,
+        name: contractName,
+      },
+      mode: 'remote',
+      signer,
+      relayerBaseUrl,
+    })
+      .then(newClient => {
+        if (!cancelled) {
+          setClient(newClient);
+          setIsReady(true);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to create FHE client:', err);
+        if (!cancelled) {
+          setIsReady(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [signer, isConnected, contractAddress, contractAbi, contractName, relayerBaseUrl]);
+
+  return { client, isReady };
 }
 ```
 
 ## React Native Component
 
 ```typescript
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { useReadContract, useWriteContract } from '@fhevm/sdk';
-import { useAccount } from 'wagmi';
+// App.tsx
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useFhevmClient } from './hooks/useFhevmClient';
+import { useRemoteFheCounter } from 'fhevm-sdk';
+import { WalletButton } from './components/WalletButton';
 
-export function Counter() {
-  const { isConnected } = useAccount();
-  const [amount, setAmount] = useState('1');
-
-  const { decryptedData, isLoading, isDecrypting, refetch } = useReadContract({
-    name: 'counter',
-    functionName: 'getCount',
-    decrypt: true,
+export default function App() {
+  const { client, isReady } = useFhevmClient({
+    contractAddress: '0xYourContractAddress',
+    contractAbi: [...], // Your contract ABI
+    contractName: 'FHECounter',
+    relayerBaseUrl: 'http://10.0.2.2:4000', // Android emulator
   });
 
-  const { write, isLoading: isWriting } = useWriteContract({
-    name: 'counter',
+  const { value, increment, decrement, refresh, isMutating } = useRemoteFheCounter({
+    client,
   });
 
-  const handleIncrement = async () => {
-    await write({
-      functionName: 'increment',
-      args: [BigInt(amount)],
-    });
-    setTimeout(() => refetch(), 2000);
-  };
-
-  if (!isConnected) {
+  if (!isReady) {
     return (
       <View style={styles.container}>
-        <Text>Please connect your wallet</Text>
+        <Text>Loading FHE Client...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <WalletButton />
+
       <Text style={styles.title}>Encrypted Counter</Text>
 
       <View style={styles.countDisplay}>
-        {isLoading || isDecrypting ? (
-          <Text>Loading...</Text>
-        ) : (
-          <Text style={styles.count}>{decryptedData?.toString() || '0'}</Text>
-        )}
+        <Text style={styles.count}>{value ?? 'Loading...'}</Text>
       </View>
 
-      <TextInput
-        style={styles.input}
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="numeric"
-        editable={!isWriting}
-      />
-
       <TouchableOpacity
-        style={[styles.button, isWriting && styles.buttonDisabled]}
-        onPress={handleIncrement}
-        disabled={isWriting}
+        style={[styles.button, isMutating && styles.buttonDisabled]}
+        onPress={increment}
+        disabled={isMutating}
       >
         <Text style={styles.buttonText}>
-          {isWriting ? 'Processing...' : 'Increment'}
+          {isMutating ? 'Processing...' : '+ Increment'}
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.button}
-        onPress={() => refetch()}
-        disabled={isLoading}
+        style={[styles.button, isMutating && styles.buttonDisabled]}
+        onPress={decrement}
+        disabled={isMutating}
       >
-        <Text style={styles.buttonText}>Refresh</Text>
+        <Text style={styles.buttonText}>
+          {isMutating ? 'Processing...' : '- Decrement'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.refreshButton}
+        onPress={refresh}
+        disabled={isMutating}
+      >
+        <Text style={styles.buttonText}>🔄 Refresh</Text>
       </TouchableOpacity>
     </View>
   );
@@ -169,35 +222,44 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
+    color: '#333',
   },
   countDisplay: {
     alignItems: 'center',
-    marginVertical: 30,
+    marginVertical: 40,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   count: {
-    fontSize: 48,
+    fontSize: 56,
     fontWeight: 'bold',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 16,
+    color: '#007bff',
   },
   button: {
     backgroundColor: '#007bff',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 12,
+  },
+  refreshButton: {
+    backgroundColor: '#28a745',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
   },
   buttonDisabled: {
     backgroundColor: '#ccc',
@@ -210,54 +272,95 @@ const styles = StyleSheet.create({
 });
 ```
 
-## Remote Mode Benefits
+## Relayer Configuration
 
-Remote mode is recommended for React Native:
-
-1. **Faster Initialization**: No WASM loading
-2. **Smaller Bundle**: No cryptographic libraries
-3. **Better Performance**: Server-side processing
-4. **Lower Memory**: Reduced mobile resource usage
-
-## Considerations
-
-### Platform Support
-
-- iOS: Fully supported
-- Android: Fully supported
-- Both platforms work with remote mode
-
-### Storage
-
-Use AsyncStorage for persistent signature caching:
-
+### Android Emulator
 ```typescript
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GenericStringStorage } from '@fhevm/sdk';
-
-class AsyncStorageAdapter implements GenericStringStorage {
-  async getItem(key: string) {
-    return await AsyncStorage.getItem(key);
-  }
-
-  async setItem(key: string, value: string) {
-    await AsyncStorage.setItem(key, value);
-  }
-
-  async removeItem(key: string) {
-    await AsyncStorage.removeItem(key);
-  }
-}
+relayerBaseUrl: 'http://10.0.2.2:4000'
 ```
 
-### Performance
+### iOS Simulator
+```typescript
+relayerBaseUrl: 'http://localhost:4000'
+```
 
-- Use remote mode for best mobile performance
-- Enable caching to reduce network requests
-- Minimize decryption operations
+### Physical Device
+```typescript
+relayerBaseUrl: 'http://192.168.1.100:4000' // Your computer's local IP
+```
+
+## Remote Mode Benefits
+
+Remote mode is required for React Native because:
+
+1. **No WASM Support**: React Native doesn't support SharedArrayBuffer
+2. **Faster Initialization**: No need to load cryptographic libraries
+3. **Smaller Bundle**: Client only handles HTTP requests
+4. **Better Performance**: Server-side encryption/decryption
+5. **Lower Memory**: No FHE operations on device
+
+## Metro Configuration
+
+React Native uses Metro bundler. Configure it to handle the monorepo:
+
+```javascript
+// metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+const config = getDefaultConfig(__dirname);
+
+// Watch all files in the monorepo
+config.watchFolders = [path.resolve(__dirname, '../..')];
+
+// Resolve fhevm-sdk from the monorepo
+config.resolver.nodeModulesPaths = [
+  path.resolve(__dirname, 'node_modules'),
+  path.resolve(__dirname, '../../node_modules'),
+];
+
+// Mock web-only dependencies
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === '@reown/appkit/react') {
+    return { type: 'empty' };
+  }
+  if (moduleName === 'wagmi') {
+    return { type: 'empty' };
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
+module.exports = config;
+```
+
+## Key Differences from Web
+
+| Feature | Web (Next.js) | React Native |
+|---------|---------------|--------------|
+| FHE Mode | Local | Remote (relayer) |
+| WASM | Loaded client-side | Not used |
+| Wallet | Rainbow Kit | Reown AppKit |
+| Hooks | All hooks | Remote hooks only |
+| Bundle Size | Larger | Smaller |
+
+## Troubleshooting
+
+### Relayer Connection Failed
+- Check relayer is running: `pnpm relayer:dev`
+- Use correct URL for platform (see above)
+- Check firewall settings
+
+### Module Not Found
+- Run `pnpm install` in both root and react-native package
+- Clear Metro cache: `npx expo start --clear`
+
+### Signature Verification Failed
+- Ensure signer is properly initialized
+- Check that wallet is connected
+- Verify network is correct
 
 ## Next Steps
 
-- Review [Basic Usage](./basic-usage.md)
-- Learn about [Configuration](../getting-started/configuration.md)
-- Explore [Storage Options](../storage/overview.md)
+- Review the [complete React Native app](../../../packages/react-native/App.tsx)
+- Learn about [useRemoteFheCounter](../hooks/overview.md)
+- Explore the [Relayer Service](../../../packages/relayer-service/README.md)
