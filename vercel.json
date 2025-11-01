@@ -1,5 +1,10 @@
 {
   "installCommand": "pnpm install --ignore-scripts && pnpm sdk:build",
   "buildCommand": "pnpm --filter ./packages/nextjs build",
-  "outputDirectory": "packages/nextjs/.next"
+  "outputDirectory": "packages/nextjs/.next",
+  "build": {
+    "env": {
+      "ENABLE_EXPERIMENTAL_COREPACK": "1"
+    }
+  }
 }
