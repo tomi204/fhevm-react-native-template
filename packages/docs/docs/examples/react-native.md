@@ -361,6 +361,6 @@ module.exports = config;
 
 ## Next Steps
 
-- Review the [complete React Native app](../../../packages/react-native/App.tsx)
+- Review the complete React Native app in `packages/react-native/App.tsx`
 - Learn about [useRemoteFheCounter](../hooks/overview.md)
-- Explore the [Relayer Service](../../../packages/relayer-service/README.md)
+- Explore the Relayer Service in `packages/relayer-service/`
